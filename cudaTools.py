@@ -2,7 +2,10 @@ import pycuda.driver as cuda
 
 
 ######################################################################
+CUDA_initialized = False
 def setCudaDevice( devN = None, usingAnimation=False  ):
+  global CUDA_initialized
+  if CUDA_initialized: return
   import pycuda.autoinit
   nDevices = cuda.Device.count()
   print "Available Devices:"
@@ -23,6 +26,7 @@ def setCudaDevice( devN = None, usingAnimation=False  ):
   else:
     dev.make_context()
   print "Using device {0}: {1}".format( devNumber, dev.name() ) 
+  CUDA_initialized = True
   return dev
 
 ######################################################################
@@ -124,3 +128,21 @@ def gpuArray3DtocudaArray( gpuArray, allowSurfaceBind=False ):
   copy3D.depth = d
   copy3D()
   return cudaArray, copy3D
+##################################################################### 
+def gpuArray2DtocudaArray( gpuArray ):
+  #import pycuda.autoinit
+  h, w = gpuArray.shape
+  descr2D = cuda.ArrayDescriptor()
+  descr2D.width = w
+  descr2D.height = h
+  descr2D.format = cuda.dtype_to_array_format(gpuArray.dtype)
+  descr2D.num_channels = 1
+  cudaArray = cuda.Array(descr2D)
+  copy2D = cuda.Memcpy2D()
+  copy2D.set_src_device(gpuArray.ptr)
+  copy2D.set_dst_array(cudaArray)
+  copy2D.src_pitch = gpuArray.strides[0]
+  copy2D.width_in_bytes = copy2D.src_pitch = gpuArray.strides[0]
+  copy2D.src_height = copy2D.height = h
+  copy2D(aligned=True)
+  return cudaArray, copy2D
