@@ -23,7 +23,7 @@ viewZmin, viewZmax = None, None
 width_GL = 512*2
 height_GL = 512*2
 
-DIM = 3
+DIM = 2
 nPoints = None
 nPointsForCircles = None
 
