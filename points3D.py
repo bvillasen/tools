@@ -33,6 +33,7 @@ grid_GL = None
 
 viewRotation =  np.zeros(3).astype(np.float32)
 viewTranslation = np.array([0., 0., -4.])
+invViewMatrix_h = np.arange(12).astype(np.float32)
 
 GL_initialized = False 
 CUDA_initialized = False 
@@ -48,7 +49,7 @@ fpsLimit = 8
 timer = 0.0
 
 gridCenter = (0,0)
-showGrid = True
+showGrid = False
 nCirclesGrid = None
 nPointsPerCircle = None
 cirPos = None
@@ -69,7 +70,7 @@ def initGL():
   print "OpenGL initialized"
   #openGLWindow()
   glutInitWindowSize(width_GL, height_GL)
-  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB)
+  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)
   glutInitWindowPosition(0, 0)
   glutCreateWindow("Window")
   
@@ -124,11 +125,19 @@ def displayFunc():
   cuda_VOB_map = cuda_VOB.map()
   cuda_VOB_ptr, cuda_VOB_size = cuda_VOB_map.device_ptr_and_size()
   updateFunc()
-  cuda_VOB_map.unmap()
+  cuda_VOB_map.unmap() 
+  
 
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
   #glClearColor(1., 1., 0., 1.)   #Background Color
+  glEnable(GL_DEPTH_TEST)
+  glMatrixMode(GL_MODELVIEW)
   glPushMatrix();
+  
+  glLoadIdentity()
+  glRotatef(viewRotation[0], 1.0, 0.0, 0.0)
+  glRotatef(viewRotation[1], 0.0, 1.0, 0.0)
+  glTranslatef(-viewTranslation[0], -viewTranslation[1], -viewTranslation[2])
   
   glEnableClientState(GL_VERTEX_ARRAY);
   glEnableClientState(GL_COLOR_ARRAY);
@@ -145,12 +154,14 @@ def displayFunc():
   glColorPointer(3, GL_FLOAT, 0,  ctypes.c_void_p(nPoints*DIM*4));
   glPointSize(1.5)
   glDrawArrays(GL_POINTS, 0, nPoints);
-    
+  
+  glPopMatrix();
+  
   glDisableClientState(GL_VERTEX_ARRAY);  
   glDisableClientState(GL_COLOR_ARRAY);
   
   glBindBuffer(GL_ARRAY_BUFFER_ARB, 0);
-  glPopMatrix();
+  
   
   timer = time.time()-timer
   computeFPS()
@@ -215,64 +226,53 @@ buttonState = 0
 def mouse(button, state, x , y):
   global ox, oy, buttonState
   global viewXmax, viewXmin, viewYmax, viewYmin
+  if state == GLUT_DOWN:
+    buttonState |= 1<<button
+  elif state == GLUT_UP:
+    buttonState = 0
+  #ZOOM WHEEL
   zoomFactor = 1.5
-  zoom = "center"
   if button == 3:  #wheel up
     rangeX = viewXmax-viewXmin
     rangeY = viewYmax-viewYmin
-    if zoom == "pointer":
-      pointerX = rangeX*x/width_GL + viewXmin
-      pointerY = rangeY*(height_GL-y)/height_GL + viewYmin
-    elif zoom == "center":
-      pointerX = rangeX*0.5 + viewXmin
-      pointerY = rangeY*0.5 + viewYmin
+    pointerX = rangeX*0.5 + viewXmin
+    pointerY = rangeY*0.5 + viewYmin
     viewXmin = pointerX - rangeX/(2.*zoomFactor)
-    viewXmax = pointerX + rangeX/(2*zoomFactor)
-    viewYmin = pointerY + rangeY/(2*zoomFactor)
-    viewYmax = pointerY - rangeY/(2*zoomFactor)
-    resize(width_GL, height_GL) 
-  if button == 4:  #wheel down  
+    viewXmax = pointerX + rangeX/(2.*zoomFactor)
+    viewYmin = pointerY + rangeY/(2.*zoomFactor)
+    viewYmax = pointerY - rangeY/(2.*zoomFactor)
+    resize(width_GL, height_GL)  
+  if button == 4:  #wheel down
     rangeX = viewXmax-viewXmin
     rangeY = viewYmax-viewYmin
-    if zoom == "pointer":
-      pointerX = rangeX*x/width_GL + viewXmin
-      pointerY = rangeY*(height_GL-y)/height_GL + viewYmin
-    elif zoom == "center":
-      pointerX = rangeX*0.5 + viewXmin
-      pointerY = rangeY*0.5 + viewYmin
+    pointerX = rangeX*0.5 + viewXmin
+    pointerY = rangeY*0.5 + viewYmin
     viewXmin = pointerX - rangeX/2.*zoomFactor
     viewXmax = pointerX + rangeX/2.*zoomFactor
     viewYmin = pointerY + rangeY/2.*zoomFactor
     viewYmax = pointerY - rangeY/2.*zoomFactor
     resize(width_GL, height_GL)  
-  elif state == GLUT_DOWN:
-    buttonState |= 1<<button
-  elif state == GLUT_UP:
-    buttonState = 0
   ox = x
   oy = y
   glutPostRedisplay()
-
+  
 def motion(x, y):
-  global viewXmax, viewXmin, viewYmax, viewYmin
+  global viewRotation, viewTranslation
   global ox, oy, buttonState
   dx = x - ox
   dy = y - oy 
-  if buttonState == 1:
-    move = (viewXmax-viewXmin)/1000.
-    viewXmin -= dx*move
-    viewXmax -= dx*move
-    viewYmin += dy*move
-    viewYmax += dy*move
-    resize( width_GL, height_GL )
-  elif buttonState == 4:
+  if buttonState == 4:
     viewTranslation[2] += dy/100.
   elif buttonState == 2:
     viewTranslation[0] += dx/100.
     viewTranslation[1] -= dy/100.
+  elif buttonState == 1:
+    viewRotation[0] += dy/5.
+    viewRotation[1] += dx/5.
   ox = x
   oy = y
   glutPostRedisplay()
+
 
 def specialKeys( key, x, y ):
   global viewXmin, viewXmax, viewYmin, viewYmax

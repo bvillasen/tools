@@ -181,7 +181,7 @@ def computeFPS():
     fpsCount += 1
     if fpsCount == fpsLimit:
         ifps = 1.0 /timer
-        glutSetWindowTitle("CUDA Points 3D animation: %f fps" % ifps)
+        glutSetWindowTitle("CUDA Points 2D animation: %f fps" % ifps)
         fpsCount = 0
 
 def keyboard(*args):
