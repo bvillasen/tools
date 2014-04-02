@@ -3,7 +3,7 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 from OpenGL.GL.ARB.vertex_buffer_object import *
-import pyglew as glew
+#import pyglew as glew
 import ctypes
 import pycuda.driver as cuda
 import pycuda.gl as cuda_gl
@@ -23,6 +23,9 @@ viewZmin, viewZmax = None, None
 width_GL = 512*2
 height_GL = 512*2
 
+windowTitle = "CUDA Points 3D animation"
+
+
 DIM = 3
 nPoints = None
 nPointsForCircles = None
@@ -32,7 +35,7 @@ block_GL = None
 grid_GL = None
 
 viewRotation =  np.zeros(3).astype(np.float32)
-viewTranslation = np.array([0., 0., -4.])
+viewTranslation = np.array([0., 0., 0.])
 invViewMatrix_h = np.arange(12).astype(np.float32)
 
 GL_initialized = False 
@@ -50,8 +53,8 @@ timer = 0.0
 
 gridCenter = (0,0)
 showGrid = False
-nCirclesGrid = None
-nPointsPerCircle = None
+nCirclesGrid = 0
+nPointsPerCircle = 0
 cirPos = None
 cirCol = None
 pointsPos_h = None
@@ -65,7 +68,7 @@ def initGL():
   global GL_initialized
   if GL_initialized: return
   glutInit()
-  glew.glewInit()
+  #glew.glewInit()
   GL_initialized = True
   print "OpenGL initialized"
   #openGLWindow()
@@ -74,8 +77,10 @@ def initGL():
   glutInitWindowPosition(0, 0)
   glutCreateWindow("Window")
   
+gl_quadratic = None  
 def openGLWindow():  
-  glClearColor(0.0, 0.0, 0.0, 0.0)
+  global gl_quadratic
+  	
   glMatrixMode(GL_PROJECTION)
   glLoadIdentity()
   if width_GL <= height_GL: glOrtho( viewXmin, viewXmax, 
@@ -87,6 +92,21 @@ def openGLWindow():
   glMatrixMode(GL_MODELVIEW)
   glLoadIdentity()  
   
+  glClearColor(0.0, 0.0, 0.0, 0.0) #Background Color
+  
+  glEnable(GL_DEPTH_TEST)
+  glClearDepth(1.0)									# Enables Clearing Of The Depth Buffer
+  glDepthFunc(GL_LESS)								# The Type Of Depth Test To Do
+  glEnable(GL_DEPTH_TEST)								# Enables Depth Testing
+  glShadeModel (GL_FLAT);		
+  
+  gl_quadratic = gluNewQuadric();
+  gluQuadricNormals(gl_quadratic, GLU_SMOOTH);
+  gluQuadricDrawStyle(gl_quadratic, GLU_FILL); 
+
+  #glEnable (GL_LIGHT0)
+  #glEnable (GL_LIGHTING)
+  #glEnable (GL_COLOR_MATERIAL)
   
 def resize(w, h):
   global width_GL, height_GL
@@ -110,59 +130,88 @@ def createVBO():
   global gl_VBO, cuda_VOB, pointsPos_h, pointsColor, cirPos, cirCol
   gl_VBO = glGenBuffers(1)
   glBindBuffer(GL_ARRAY_BUFFER_ARB, gl_VBO)
-  glBufferData(GL_ARRAY_BUFFER_ARB, pointsPos_h.nbytes + pointsColor.nbytes + cirPos.nbytes + cirCol.nbytes, None, GL_STREAM_DRAW_ARB)
+  glBufferData(GL_ARRAY_BUFFER_ARB, pointsPos_h.nbytes + pointsColor.nbytes, None, GL_STREAM_DRAW_ARB)
   glBufferSubData(GL_ARRAY_BUFFER_ARB, 0, pointsPos_h.nbytes, (GLfloat*len(pointsPos_h))(*pointsPos_h) ); 
   glBufferSubData(GL_ARRAY_BUFFER_ARB, pointsPos_h.nbytes, pointsColor.nbytes, (GLfloat*len(pointsColor))(*pointsColor) );
-  glBufferSubData(GL_ARRAY_BUFFER_ARB, pointsPos_h.nbytes+pointsColor.nbytes, cirPos.nbytes, (GLfloat*len(cirPos))(*cirPos) )
-  glBufferSubData(GL_ARRAY_BUFFER_ARB, pointsPos_h.nbytes+pointsColor.nbytes+cirPos.nbytes, cirCol.nbytes, (GLfloat*len(cirCol))(*cirCol) )
+  #glBufferSubData(GL_ARRAY_BUFFER_ARB, pointsPos_h.nbytes+pointsColor.nbytes, cirPos.nbytes, (GLfloat*len(cirPos))(*cirPos) )
+  #glBufferSubData(GL_ARRAY_BUFFER_ARB, pointsPos_h.nbytes+pointsColor.nbytes+cirPos.nbytes, cirCol.nbytes, (GLfloat*len(cirCol))(*cirCol) )
   cuda_VOB = cuda_gl.RegisteredBuffer(long(gl_VBO))
+
+def drawCartesian( gl_quadratic, length = 5., width = 0.1 ):
+  glColor3f(1.0, 0., 0. );
+  gluCylinder( gl_quadratic, width, width, length, 50, 50 ) 
+  glTranslatef( 0., 0., length )
+  gluCylinder( gl_quadratic, width*2, 0., length/10, 50, 50 )
+  glTranslatef( 0., 0., -length )
+  
+  glRotatef( 90., 0., 1., 0. ) 
+  glColor3f(0., 1., 0. );
+  gluCylinder( gl_quadratic, width, width, length, 50, 50 ) 
+  glTranslatef( 0., 0., length )
+  gluCylinder( gl_quadratic, width*2, 0., length/10, 50, 50 )
+  glTranslatef( 0., 0., -length )
+  
+  glRotatef( -90., 1., 0., 0. ) 
+  glColor3f(0., 0., 1. );
+  gluCylinder( gl_quadratic, width, width, length, 50, 50 ) 
+  glTranslatef( 0., 0., length )
+  gluCylinder( gl_quadratic, width*2, 0., length/10, 50, 50 )
+  glTranslatef( 0., 0., -length )
 
 def displayFunc():
   global  timer, frames, cuda_VOB_ptr
   timer = time.time()
   frames += 1
   
+  ##############################################################################  
+  #Step of cuda function
   cuda_VOB_map = cuda_VOB.map()
   cuda_VOB_ptr, cuda_VOB_size = cuda_VOB_map.device_ptr_and_size()
   updateFunc()
   cuda_VOB_map.unmap() 
+  ##############################################################################
+  
   
 
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-  #glClearColor(1., 1., 0., 1.)   #Background Color
-  glEnable(GL_DEPTH_TEST)
+  
+  
+  
   glMatrixMode(GL_MODELVIEW)
   glPushMatrix();
-  
   glLoadIdentity()
   glRotatef(viewRotation[0], 1.0, 0.0, 0.0)
   glRotatef(viewRotation[1], 0.0, 1.0, 0.0)
   glTranslatef(-viewTranslation[0], -viewTranslation[1], -viewTranslation[2])
   
+  #drawCartesian( gl_quadratic )
+  
+  ##############################################################################
+  #Start of vertex drawing
   glEnableClientState(GL_VERTEX_ARRAY);
   glEnableClientState(GL_COLOR_ARRAY);
   
   glBindBuffer(GL_ARRAY_BUFFER_ARB, gl_VBO);
   #glBufferSubData(GL_ARRAY_BUFFER_ARB, 0, pointsPos_h.nbytes, (GLfloat*len(pointsPos_h))(*pointsPos_h) )
   
-  glVertexPointer(2, GL_FLOAT, 0, ctypes.c_void_p(nPoints*(DIM+3)*4));
-  glColorPointer(3, GL_FLOAT, 0,  ctypes.c_void_p(nPoints*(DIM+3)*4 + nPointsForCircles*2*4));
-  glLineWidth(2.)
-  if showGrid: glDrawArrays(GL_LINE_STRIP, 0, nPointsForCircles);
+  #glVertexPointer(2, GL_FLOAT, 0, ctypes.c_void_p(nPoints*(DIM+3)*4));
+  #glColorPointer(3, GL_FLOAT, 0,  ctypes.c_void_p(nPoints*(DIM+3)*4 + nPointsForCircles*2*4));
+  #glLineWidth(2.)
+  #if showGrid: glDrawArrays(GL_LINE_STRIP, 0, nPointsForCircles);
   
   glVertexPointer(DIM, GL_FLOAT, 0, None);
   glColorPointer(3, GL_FLOAT, 0,  ctypes.c_void_p(nPoints*DIM*4));
-  glPointSize(1.5)
+  glPointSize(3.)
   glDrawArrays(GL_POINTS, 0, nPoints);
   
-  glPopMatrix();
-  
+   
   glDisableClientState(GL_VERTEX_ARRAY);  
   glDisableClientState(GL_COLOR_ARRAY);
   
   glBindBuffer(GL_ARRAY_BUFFER_ARB, 0);
-  
-  
+  #End of vertex drawing
+  ###############################################################################
+  glPopMatrix();
   timer = time.time()-timer
   computeFPS()
   glutSwapBuffers();
@@ -176,7 +225,6 @@ def startGL():
   glutKeyboardFunc( keyboard )
   glutSpecialFunc(specialKeys)
   glutMouseFunc(mouse)
-  #glutMouseWheelFunc(mouseWheel)
   glutIdleFunc( displayFunc )
   glutMotionFunc(motion)
   glutIdleFunc(glutPostRedisplay)
@@ -192,7 +240,7 @@ def computeFPS():
     fpsCount += 1
     if fpsCount == fpsLimit:
         ifps = 1.0 /timer
-        glutSetWindowTitle("CUDA Points 3D animation: %f fps" % ifps)
+        glutSetWindowTitle( windowTitle + "    {0:.2f} fps".format(float(ifps)) )
         fpsCount = 0
 
 def keyboard(*args):
