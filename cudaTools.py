@@ -8,7 +8,7 @@ def setCudaDevice( devN = None, usingAnimation=False  ):
   if CUDA_initialized: return
   import pycuda.autoinit
   nDevices = cuda.Device.count()
-  print "Available Devices:"
+  print "\nAvailable Devices:"
   for i in range(nDevices):
     dev = cuda.Device( i )
     print "  Device {0}: {1}".format( i, dev.name() )
@@ -55,13 +55,14 @@ def getFreeMemory( show=True):
   return cuda.mem_get_info()[0]
 
 #####################################################################
-def kernelMemoryInfo(kernel):
+def kernelMemoryInfo(kernel, kernelName=""):
   shared=kernel.shared_size_bytes
   regs=kernel.num_regs
   local=kernel.local_size_bytes
   const=kernel.const_size_bytes
   mbpt=kernel.max_threads_per_block
-  print("""=MEM=\nLocal:%d,\nShared:%d,\nRegisters:%d,\nConst:%d,\nMax Threads/B:%d"""%(local,shared,regs,const,mbpt))
+  print "=Kernel Memory=    {0}". format(kernelName)
+  print("""Local:%d,\nShared:%d,\nRegisters:%d,\nConst:%d,\nMax Threads/B:%d"""%(local,shared,regs,const,mbpt))
 
 ##################################################################### 
 def np2DtoCudaArray( npArray, allowSurfaceBind=False ):
