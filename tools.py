@@ -1,4 +1,4 @@
-import sys
+import sys, os
 
 def printProgress( current, total, deltaIter,  deltaTime ):
   terminalString = "\rProgress: "
