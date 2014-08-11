@@ -15,6 +15,7 @@ from cudaTools import setCudaDevice, getFreeMemory
 import sys, time, os
 import pylab as plt
 
+
 viewXmin, viewXmax = None, None
 viewYmin, viewYmax = None, None
 viewZmin, viewZmax = None, None
@@ -271,8 +272,9 @@ def keyboard(*args):
 ox = 0
 oy = 0
 buttonState = 0
+zoom = 2.
 def mouse(button, state, x , y):
-  global ox, oy, buttonState
+  global ox, oy, buttonState, zoom
   global viewXmax, viewXmin, viewYmax, viewYmin
   if state == GLUT_DOWN:
     buttonState |= 1<<button
@@ -289,6 +291,7 @@ def mouse(button, state, x , y):
     viewXmax = pointerX + rangeX/(2.*zoomFactor)
     viewYmin = pointerY + rangeY/(2.*zoomFactor)
     viewYmax = pointerY - rangeY/(2.*zoomFactor)
+    zoom /= 2.5
     resize(width_GL, height_GL)  
   if button == 4:  #wheel down
     rangeX = viewXmax-viewXmin
@@ -299,6 +302,7 @@ def mouse(button, state, x , y):
     viewXmax = pointerX + rangeX/2.*zoomFactor
     viewYmin = pointerY + rangeY/2.*zoomFactor
     viewYmax = pointerY - rangeY/2.*zoomFactor
+    zoom *= 2.5
     resize(width_GL, height_GL)  
   ox = x
   oy = y
@@ -309,11 +313,12 @@ def motion(x, y):
   global ox, oy, buttonState
   dx = x - ox
   dy = y - oy 
+  #if buttonState == 4:
+    #viewTranslation[2] += dy/100.
   if buttonState == 4:
-    viewTranslation[2] += dy/100.
-  elif buttonState == 2:
-    viewTranslation[0] += dx/100.
-    viewTranslation[1] -= dy/100.
+    viewTranslation[0] -= dx*zoom
+    viewTranslation[1] += dy*zoom
+    #print "mouse moving"
   elif buttonState == 1:
     viewRotation[0] += dy/5.
     viewRotation[1] += dx/5.
