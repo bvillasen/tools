@@ -1,4 +1,5 @@
 import pycuda.driver as cuda
+import sys
 
 
 ######################################################################
@@ -108,15 +109,22 @@ def np3DtoCudaArray( npArray, allowSurfaceBind=False ):
   copy3D()
   return cudaArray
 ##################################################################### 
-def gpuArray3DtocudaArray( gpuArray, allowSurfaceBind=False ):
+def gpuArray3DtocudaArray( gpuArray, allowSurfaceBind=False, precision='float' ):
   #import pycuda.autoinit
   d, h, w = gpuArray.shape
   descr3D = cuda.ArrayDescriptor3D()
   descr3D.width = w
   descr3D.height = h
   descr3D.depth = d
-  descr3D.format = cuda.dtype_to_array_format(gpuArray.dtype)
-  descr3D.num_channels = 1
+  if precision == 'float':
+    descr3D.format = cuda.dtype_to_array_format(gpuArray.dtype)
+    descr3D.num_channels = 1
+  elif precision == 'double': 
+    descr3D.format = cuda.array_format.SIGNED_INT32
+    descr3D.num_channels = 2
+  else: 
+    print "ERROR:  CUDA_ARRAY incompatible precision"
+    sys.exit()
   descr3D.flags = 0
   if allowSurfaceBind:
     descr3D.flags = cuda.array3d_flags.SURFACE_LDST
