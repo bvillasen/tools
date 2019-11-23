@@ -1,5 +1,12 @@
 import sys, os
 
+def timeSplit( ETR ):
+  h = int(ETR/3600)
+  m = int(ETR - 3600*h)/60
+  s = int(ETR - 3600*h - 60*m)
+  return h, m, s 
+
+
 def printProgress( current, total, deltaIter,  deltaTime ):
   terminalString = "\rProgress: "
   if total==0: total+=1

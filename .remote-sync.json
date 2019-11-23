@@ -1,0 +1,16 @@
+{
+  "uploadOnSave": true,
+  "useAtomicWrites": false,
+  "deleteLocal": false,
+  "hostname": "shamrock.ucsc.edu",
+  "port": "22",
+  "target": "/home/bruno/Desktop/Dropbox/Developer/pyCUDA/tools",
+  "ignore": [
+    ".remote-sync.json",
+    ".git/**"
+  ],
+  "username": "bruno",
+  "watch": [],
+  "useAgent": true,
+  "transport": "scp"
+}

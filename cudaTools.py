@@ -15,10 +15,10 @@ def setCudaDevice( devN = None, usingAnimation=False  ):
     print "  Device {0}: {1}".format( i, dev.name() )
   devNumber = 0
   if nDevices > 1:
-    if devN == None: 
-      devNumber = int(raw_input("Select device number: "))  
+    if devN == None:
+      devNumber = int(raw_input("Select device number: "))
     else:
-      devNumber = devN 
+      devNumber = devN
   cuda.Context.pop()  #Disable previus CUDA context
   dev = cuda.Device( devNumber )
   if usingAnimation:
@@ -26,14 +26,14 @@ def setCudaDevice( devN = None, usingAnimation=False  ):
     cuda_gl.make_context(dev)
   else:
     dev.make_context()
-  print "Using device {0}: {1}".format( devNumber, dev.name() ) 
+  print "Using device {0}: {1}".format( devNumber, dev.name() )
   CUDA_initialized = True
   return dev
 
 ######################################################################
 def mpi_setCudaDevice( pId, devN, MPI_comm, show=True ):
   cuda.init()
-  if pId == 0:
+  if pId == 0 and show:
     nDevices = cuda.Device.count()
     print "Available Devices:"
     for i in range(nDevices):
@@ -44,8 +44,7 @@ def mpi_setCudaDevice( pId, devN, MPI_comm, show=True ):
   dev = cuda.Device( devN ) #device we are working on
   ctx = dev.make_context() #make a working context
   ctx.push() #let context make the lead
-  if show:
-    print "Process {0} using Device {1}: {2}".format(pId, devN, ctx.get_device().name())
+  print "[pId {0}] Using device {1}: {2}".format(pId, devN, ctx.get_device().name())
   return ctx, dev
 
 #####################################################################
@@ -65,7 +64,7 @@ def kernelMemoryInfo(kernel, kernelName=""):
   print "=Kernel Memory=    {0}". format(kernelName)
   print("""Local:%d,\nShared:%d,\nRegisters:%d,\nConst:%d,\nMax Threads/B:%d"""%(local,shared,regs,const,mbpt))
 
-##################################################################### 
+#####################################################################
 def np2DtoCudaArray( npArray, allowSurfaceBind=False ):
   #import pycuda.autoinit
   h, w = npArray.shape
@@ -86,7 +85,7 @@ def np2DtoCudaArray( npArray, allowSurfaceBind=False ):
   copy2D(aligned=True)
   return cudaArray, descr2D
 
-##################################################################### 
+#####################################################################
 def np3DtoCudaArray( npArray, allowSurfaceBind=False ):
   #import pycuda.autoinit
   d, h, w = npArray.shape
@@ -107,8 +106,8 @@ def np3DtoCudaArray( npArray, allowSurfaceBind=False ):
   copy3D.src_height = copy3D.height = h
   copy3D.depth = d
   copy3D()
-  return cudaArray
-##################################################################### 
+  return cudaArray, copy3D
+#####################################################################
 def gpuArray3DtocudaArray( gpuArray, allowSurfaceBind=False, precision='float' ):
   #import pycuda.autoinit
   d, h, w = gpuArray.shape
@@ -119,10 +118,10 @@ def gpuArray3DtocudaArray( gpuArray, allowSurfaceBind=False, precision='float' )
   if precision == 'float':
     descr3D.format = cuda.dtype_to_array_format(gpuArray.dtype)
     descr3D.num_channels = 1
-  elif precision == 'double': 
+  elif precision == 'double':
     descr3D.format = cuda.array_format.SIGNED_INT32
     descr3D.num_channels = 2
-  else: 
+  else:
     print "ERROR:  CUDA_ARRAY incompatible precision"
     sys.exit()
   descr3D.flags = 0
@@ -137,7 +136,7 @@ def gpuArray3DtocudaArray( gpuArray, allowSurfaceBind=False, precision='float' )
   copy3D.depth = d
   copy3D()
   return cudaArray, copy3D
-##################################################################### 
+#####################################################################
 def gpuArray2DtocudaArray( gpuArray ):
   #import pycuda.autoinit
   h, w = gpuArray.shape

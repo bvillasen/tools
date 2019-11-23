@@ -76,7 +76,7 @@ def initGL():
   glutInitWindowSize(width_GL, height_GL)
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)
   glutInitWindowPosition(0, 0)
-  glutCreateWindow("Window")
+  glutCreateWindow( windowTitle )
   
 gl_quadratic = None  
 def openGLWindow():  
@@ -160,9 +160,9 @@ def drawCartesian( gl_quadratic, length = 5., width = 0.1 ):
   glTranslatef( 0., 0., -length )
 
 def displayFunc():
-  global  timer, frames, cuda_VOB_ptr
+  global  timer, frames, cuda_VOB_ptr, fpsCount
   timer = time.time()
-  frames += 1
+  #frames += 1
   
   ##############################################################################  
   #Step of cuda function
@@ -214,7 +214,8 @@ def displayFunc():
   ###############################################################################
   glPopMatrix();
   timer = time.time()-timer
-  computeFPS()
+  fpsCount += 1
+  #if fpsCount == fpsLimit: computeFPS()
   glutSwapBuffers();
 
   
@@ -237,12 +238,12 @@ def startGL():
 
 def computeFPS():
     global frameCount, fpsCount 
-    frameCount += 1
-    fpsCount += 1
-    if fpsCount == fpsLimit:
-        ifps = 1.0 /timer
-        glutSetWindowTitle( windowTitle + "    {0:.2f} fps".format(float(ifps)) )
-        fpsCount = 0
+    #frameCount += 1
+    #fpsCount += 1
+    #if fpsCount == fpsLimit:
+    ifps = 1.0 /timer
+    glutSetWindowTitle( windowTitle + "    {0} fps".format(ifps) )
+    fpsCount = 0
 
 def keyboard(*args):
   global viewXmin, viewXmax, viewYmin, viewYmax
@@ -360,7 +361,7 @@ def initCudaGL():
   #initialMemory = getFreeMemory( show=True )  
   ########################################################################
   pointsPos_h = np.random.random([nPoints*DIM]).astype(np.float32) - 1.
-  pointsColor = np.random.random([nPoints*3]).astype(np.float32)
+  if pointsColor==None: pointsColor = np.random.random([nPoints*3]).astype(np.float32)
   ########################################################################
   #finalMemory = getFreeMemory( show=False )
   #print " Total Global Memory Used: {0} Mbytes".format(float(initialMemory-finalMemory)/1e6) 
